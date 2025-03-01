@@ -425,6 +425,133 @@
         .pulse {
             animation: pulse 1s infinite;
         }
+
+                /* New music player styles */
+                .music-player {
+            margin-top: 40px;
+            border-top: 1px solid var(--border);
+            padding-top: 24px;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .music-controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .music-button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background-color: var(--background);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .music-button:hover {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .music-button.active {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .music-info {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .music-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .music-description {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+
+        /* Dark overlay for YouTube player in dark mode */
+        [data-theme="dark"] .video-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.15);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            gap: 8px;
+        }
+
+        .volume-slider {
+            width: 100px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background-color: var(--background);
+            outline: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -526,6 +653,41 @@
                     <div id="sessionHistory">
                         <!-- Session history will be added here -->
                     </div>
+
+                    <div class="music-player">
+                        <h3 class="section-title">Focus Music</h3>
+                        <div class="video-container">
+                            <iframe id="youtubePlayer" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                        
+                        <div class="music-info">
+                            <div class="music-title" id="currentMusicTitle">Select a music stream</div>
+                            <div class="music-description" id="currentMusicDescription">Choose from relaxing study music options</div>
+                        </div>
+                        
+                        <div class="volume-control">
+                            <i class="fas fa-volume-down"></i>
+                            <input type="range" id="volumeSlider" class="volume-slider" min="0" max="100" value="50">
+                            <i class="fas fa-volume-up"></i>
+                        </div>
+                        
+                        <div class="music-controls">
+                            <button class="music-button" data-video-id="Hk4r1YGrif4" data-title="Lo-fi Hip Hop" data-description="Relaxing beats to study/relax to">
+                                <i class="fas fa-music"></i> Lo-fi Hip Hop
+                            </button>
+                            <button class="music-button" data-video-id="7JPTlqRRf1w" data-title="Piano Focus Music" data-description="Concentration and focus piano tracks">
+                                <i class="fas fa-music"></i> Piano Focus
+                            </button>
+                            <button class="music-button" data-video-id="QFaNvfCqzRA" data-title="Classical Study Music" data-description="Classical music for studying and concentration">
+                                <i class="fas fa-music"></i> Classical
+                            </button>
+                            <button class="music-button" data-video-id="GkR-FhknLZE" data-title="Nature Sounds" data-description="Relaxing nature sounds for deep focus">
+                                <i class="fas fa-leaf"></i> Nature Sounds
+                            </button>
+                            <button id="stopMusic" class="music-button">
+                                <i class="fas fa-stop"></i> Stop
+                            </button>
+                        </div>
                 </div>
             </div>
         </div>
@@ -865,6 +1027,163 @@
                 sessionHistory.appendChild(historyItem);
             });
         }
+
+            // YouTube Player API Integration
+    // Load the YouTube API script
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    let player;
+    let currentVideoId = '';
+    const musicButtons = document.querySelectorAll('.music-button[data-video-id]');
+    const stopButton = document.getElementById('stopMusic');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const currentMusicTitle = document.getElementById('currentMusicTitle');
+    const currentMusicDescription = document.getElementById('currentMusicDescription');
+
+    // Create YouTube player once API is ready
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('youtubePlayer', {
+            height: '100%',
+            width: '100%',
+            videoId: '',
+            playerVars: {
+                'playsinline': 1,
+                'autoplay': 0,
+                'controls': 0,
+                'showinfo': 0,
+                'rel': 0,
+                'iv_load_policy': 3,
+                'modestbranding': 1
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    }
+
+    // When player is ready
+    function onPlayerReady(event) {
+        // Set initial volume
+        player.setVolume(volumeSlider.value);
+        
+        // Add click handlers to music buttons
+        musicButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const videoId = this.getAttribute('data-video-id');
+                const title = this.getAttribute('data-title');
+                const description = this.getAttribute('data-description');
+                
+                // Remove active class from all buttons
+                musicButtons.forEach(btn => btn.classList.remove('active'));
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Update music info
+                currentMusicTitle.textContent = title;
+                currentMusicDescription.textContent = description;
+                
+                // If same video is clicked, just play/pause
+                if (currentVideoId === videoId && player.getPlayerState() === YT.PlayerState.PAUSED) {
+                    player.playVideo();
+                } else {
+                    // Load and play the new video
+                    currentVideoId = videoId;
+                    player.loadVideoById(videoId);
+                    player.playVideo();
+                }
+                
+                // Save the current music selection in localStorage
+                localStorage.setItem('lastPlayedVideo', videoId);
+                localStorage.setItem('lastPlayedTitle', title);
+                localStorage.setItem('lastPlayedDescription', description);
+            });
+        });
+        
+        // Stop button handler
+        stopButton.addEventListener('click', function() {
+            player.stopVideo();
+            musicButtons.forEach(btn => btn.classList.remove('active'));
+            currentMusicTitle.textContent = "Music stopped";
+            currentMusicDescription.textContent = "Select a music option to play";
+        });
+        
+        // Volume slider handler
+        volumeSlider.addEventListener('input', function() {
+            player.setVolume(this.value);
+        });
+        
+        // Load last played video if it exists
+        const lastPlayedVideo = localStorage.getItem('lastPlayedVideo');
+        if (lastPlayedVideo) {
+            const lastTitle = localStorage.getItem('lastPlayedTitle');
+            const lastDescription = localStorage.getItem('lastPlayedDescription');
+            
+            // Find and click the corresponding button
+            const buttonToClick = Array.from(musicButtons).find(
+                btn => btn.getAttribute('data-video-id') === lastPlayedVideo
+            );
+            
+            if (buttonToClick) {
+                // Instead of clicking, manually set everything
+                currentVideoId = lastPlayedVideo;
+                currentMusicTitle.textContent = lastTitle;
+                currentMusicDescription.textContent = lastDescription;
+                buttonToClick.classList.add('active');
+                
+                // Only autoplay if the user had a session today
+                if (sessionsToday.length > 0) {
+                    player.loadVideoById(lastPlayedVideo);
+                    player.playVideo();
+                } else {
+                    player.cueVideoById(lastPlayedVideo);
+                }
+            }
+        }
+    }
+
+    // When player state changes
+    function onPlayerStateChange(event) {
+        // You can add behavior based on player state changes
+        // For example, update UI when video ends
+        if (event.data === YT.PlayerState.ENDED) {
+            player.playVideo(); // Loop the video
+        }
+    }
+
+    // Pause music when timer starts
+    const originalStartButtonClick = startButton.onclick;
+    startButton.onclick = function() {
+        // Ask if user wants to keep music playing when timer starts
+        if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
+            if (!confirm('Keep music playing while timer is running?')) {
+                player.pauseVideo();
+            }
+        }
+        
+        // Call the original click handler
+        if (originalStartButtonClick) {
+            originalStartButtonClick.call(this);
+        }
+    };
+
+    // Play music when timer completes
+    const originalTimerComplete = timerComplete;
+    function timerComplete() {
+        // Call the original timer complete function
+        if (originalTimerComplete) {
+            originalTimerComplete();
+        }
+        
+        // If a video was previously selected, play it
+        if (player && currentVideoId) {
+            player.playVideo();
+        }
+    }
 
         // Initialize
         renderTasks();
